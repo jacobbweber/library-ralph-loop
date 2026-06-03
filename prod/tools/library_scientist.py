@@ -36,7 +36,7 @@ def parse_yaml_front_matter(file_path):
 
 def analyze_library(library_dir, workspace):
     if not library_dir.exists():
-        print("Library Scientist Error: Library directory does not exist.", file=sys.stderr)
+        logger.error("Library Scientist Error: Library directory does not exist.")
         return
         
     all_notes = {}
@@ -164,13 +164,42 @@ def analyze_library(library_dir, workspace):
             md.append(f"- *... and {len(raw_and_drafts) - 5} more files.*")
         md.append("")
         
-    # Analyze Tag Overlaps for Concept synthesis
+    # Analyze Tag Overlaps and Note Type clusters for creative hybridization suggestions
     md.append("### 🔀 Structural Hybridization Ideas")
-    # Propose combining systems if we have certain types
+    has_suggestions = False
+    
+    # 1. Zettelkasten + DIKW
     if type_counts.get("zettelkasten", 0) > 0 and type_counts.get("diwk", 0) > 0:
-        md.append("- **Zettelkasten + DIKW Hybridization**: We possess both atomic Zettelkasten files and structured DIKW analysis briefs. Recommendation: Create Zettelkasten notes that contain explicit pointers to high-level Wisdom entries, establishing a directional pathway from raw notes to corporate decision briefs.")
-    else:
-        md.append("- **Taxonomy Expansion**: Recommend introducing more Zettelkasten atomic nodes to link together research papers and brain dump logs.")
+        md.append("- **Zettelkasten & DIKW Hybridization**: Leverage atomic Zettelkasten files as baseline factual/observational elements, and map them to structured DIKW briefs. Recommendation: Embed direct hyperlinks from atomic concept nodes to high-level Wisdom entries to build a clear directional pathway from raw facts to systemic insights.")
+        has_suggestions = True
+        
+    # 2. SOAP + SDLC Project
+    if type_counts.get("soap", 0) > 0 and type_counts.get("sdlc_project", 0) > 0:
+        md.append("- **SOAP & SDLC Project Hybridization**: Apply the SOAP (Subjective, Objective, Assessment, Plan) model within SDLC Project sprint logs. Recommendation: Use Subjective/Objective sections to capture team feedback and raw telemetry, Assessment to evaluate software health, and Plan to update the roadmap backlog.")
+        has_suggestions = True
+        
+    # 3. Cornell + Feynman
+    if type_counts.get("cornell", 0) > 0 and type_counts.get("feynman", 0) > 0:
+        md.append("- **Cornell & Feynman Hybridization**: Combine Cornell's retrieval cues with the Feynman technique. Recommendation: Write a Feynman explanation (simplifying a complex topic for a child) in the main notes column, and place questions or keywords in the cue column to maximize study/retrieval efficiency.")
+        has_suggestions = True
+        
+    # 4. Zettelkasten + Concept Map
+    if type_counts.get("zettelkasten", 0) > 0 and type_counts.get("concept_map", 0) > 0:
+        md.append("- **Zettelkasten & Concept Map Hybridization**: Link atomic concepts to topological structures. Recommendation: Create a Concept Map node that acts as a structural schema, linking multiple atomic Zettelkasten notes together to model complex, multi-variable relationships.")
+        has_suggestions = True
+        
+    # 5. QEC + Eisenhower
+    if type_counts.get("qec", 0) > 0 and type_counts.get("eisenhower", 0) > 0:
+        md.append("- **QEC & Eisenhower Hybridization**: Bridge logical argumentation with task prioritization. Recommendation: Map QEC (Question-Evidence-Conclusion) conclusions directly to Eisenhower priority matrices to convert conceptual answers into immediate, structured tasks.")
+        has_suggestions = True
+        
+    # 6. Brain Dump processing fallback
+    if type_counts.get("brain_dump", 0) > 0:
+        md.append("- **Brain Dump Decomposition**: We have unprocessed raw ideas. Recommendation: Decompose the atomic ideas inside active Brain Dumps into individual Zettelkasten concepts or compile them into a DIKW synthesis brief.")
+        has_suggestions = True
+
+    if not has_suggestions:
+        md.append("- **Taxonomy Expansion**: Propose creating new templates and introducing a mix of Zettelkasten (atomic concepts), DIKW (structured synthesis), and SOAP (analytical logs) to map knowledge and software features.")
         
     # Warn about orphans
     if orphans:
@@ -193,11 +222,11 @@ def main():
     workspace = Path(__file__).parent.parent.parent.resolve()
     target_dir = (workspace / args.dir).resolve()
     
-    analyze_library(target_dir, workspace)
+    try:
+        analyze_library(target_dir, workspace)
+    except Exception:
+        logger.exception("Unhandled exception in library_scientist.py")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception:
-        logger.exception("Unhandled exception in prod/tools/library_scientist.py")
-        sys.exit(1)
+    main()
