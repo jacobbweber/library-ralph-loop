@@ -273,9 +273,10 @@ Write-Host "Starting Ralph Loop (PowerShell 7). Model: $($config.model). Max ite
 Write-Host "LM Studio API Base: $($config.api_base)"
 
 $iteration = 0
-while ($iteration -lt $maxIters) {
+while ($maxIters -eq -1 -or $iteration -lt $maxIters) {
     $iteration++
-    Write-Host "`n--- TURN $iteration / $maxIters ---" -ForegroundColor Blue
+    $iterStr = if ($maxIters -eq -1) { "Infinite" } else { $maxIters }
+    Write-Host "`n--- TURN $iteration / $iterStr ---" -ForegroundColor Blue
 
     # 1. Compile Context
     $contextPrompt = Compile-Context $config
@@ -325,8 +326,12 @@ while ($iteration -lt $maxIters) {
     Save-Config $config
 
     if ($complete) {
-        Write-Host "Runner: Stop signal <promise>COMPLETE</promise> detected. Terminating loop." -ForegroundColor Green
-        break
+        if ($maxIters -eq -1) {
+            Write-Host "Runner: COMPLETE signal detected, but running in infinite mode (-1). Transitioning to self-evolution/research phase..." -ForegroundColor Yellow
+        } else {
+            Write-Host "Runner: Stop signal <promise>COMPLETE</promise> detected. Terminating loop." -ForegroundColor Green
+            break
+        }
     }
 
     Write-Host "Runner: End of turn $iteration. Sleeping for $($config.sleep_seconds_between_turns)s..."

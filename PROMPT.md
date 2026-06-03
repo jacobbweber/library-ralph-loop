@@ -75,4 +75,9 @@ To delete a file, use:
 
 `99999999999999999` **LINT AND RUN METADATA CHECKS**: Always execute `python dev/tools/librarian.py` to ensure changes conform to front-matter lints before promoting.
 
-`9999999999999999` **COMPLETION SIGNAL**: If all items in `dev/progress.json` are successfully marked `passes: true`, output `<promise>COMPLETE</promise>` at the end of your response to tell the runner to terminate the loop.
+`9999999999999999` **CONTINUOUS SELF-EVOLUTION**: If all items in `dev/progress.json` are successfully marked `passes: true`, do NOT output COMPLETE to terminate the loop. Instead, transition to "Self-Evolution & Research Mode":
+- Run a taxonomical audit using `dev/tools/library_scientist.py`.
+- Check the research queue in `dev/research_queue.json`.
+- Execute a research search query using `dev/tools/research_assistant.py` to scrape the web, read pages, and compile a new structured "Research Brief" in `dev/library/research_briefs/`.
+- Propose new improvements or templates based on your findings, add them as new task checklist items in `dev/progress.json` (resetting some or appending new ones), and continue the development cycle!
+- Only output `<promise>COMPLETE</promise>` if you are explicitly instructed by a human to shut down.

@@ -9,9 +9,11 @@ __pycache__/
 htmlcov/
 
 # Temporary / Local Loop State
-#dev/last_error.log
+dev/last_error.log
 dev/local_settings.json
 config_local.json
+*logs/
+*.log
 
 # OS files
 .DS_Store

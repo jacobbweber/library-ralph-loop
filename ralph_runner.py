@@ -231,9 +231,9 @@ def main():
     print(f"LM Studio API Base: {config['api_base']}")
     
     iteration = 0
-    while iteration < max_iters:
+    while max_iters == -1 or iteration < max_iters:
         iteration += 1
-        print(f"\n--- TURN {iteration} / {max_iters} ---")
+        print(f"\n--- TURN {iteration} / {'Infinite' if max_iters == -1 else max_iters} ---")
         
         # 1. Compile context
         context_prompt = compile_context(config)
@@ -287,8 +287,11 @@ def main():
         save_config(config)
         
         if complete:
-            print("Runner: Stop signal <promise>COMPLETE</promise> detected. Terminating loop.")
-            break
+            if max_iters == -1:
+                print("Runner: COMPLETE signal detected, but running in infinite mode (-1). Transitioning to self-evolution/research phase...")
+            else:
+                print("Runner: Stop signal <promise>COMPLETE</promise> detected. Terminating loop.")
+                break
             
         sleep_time = config.get("sleep_seconds_between_turns", 2)
         print(f"Runner: End of turn {iteration}. Sleeping for {sleep_time}s...")

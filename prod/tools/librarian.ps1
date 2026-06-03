@@ -20,7 +20,9 @@ $ALLOWED_STATUSES = @("raw", "draft", "review", "stable")
 function Parse-YamlFrontMatter($filePath) {
     try {
         $content = Get-Content -Raw -Path $filePath -Encoding utf8
-        if ($content -match "^(?:\r?\n)*---\r?\n([\s\S]*?)\r?\n---") {
+        # Strip leading BOM if present
+        $content = $content.TrimStart([char]0xFEFF).Trim()
+        if ($content -match "^---\r?\n([\s\S]*?)\r?\n---") {
             $yamlText = $Matches[1]
             $metadata = @{}
             $lines = $yamlText -split "\r?\n"
@@ -64,6 +66,11 @@ function Lint-Library($targetPath) {
     # Pass 1: Parse and validate metadata fields
     foreach ($file in $files) {
         $relPath = $file.FullName.Substring($WORKSPACE.Length + 1).Replace("\", "/")
+        
+        # Skip files that are not in library/ (like plan.md or templates)
+        if ($relPath -notlike "*/library/*") {
+            continue
+        }
         
         $parseResult = Parse-YamlFrontMatter $file.FullName
         if ($parseResult.Error) {
