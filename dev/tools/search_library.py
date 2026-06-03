@@ -6,6 +6,15 @@ import json
 import re
 from pathlib import Path
 
+# Configure centralized logging
+_SCRIPT_DIR = Path(__file__).parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+from logging_setup import configure_logging
+configure_logging(script_name=Path(__file__).name)
+import logging
+logger = logging.getLogger(__name__)
+
 def parse_yaml_front_matter(file_path):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -46,14 +55,14 @@ def parse_yaml_front_matter(file_path):
                 
         return metadata
     except Exception as e:
-        print(f"Error parsing front matter in {file_path}: {e}", file=sys.stderr)
+        logger.exception(f"Error parsing front matter in {file_path}: {e}")
         return None
 
 def search_library(target_dir, args):
     results = []
     
     if not target_dir.exists():
-        print(f"Directory {target_dir} does not exist.", file=sys.stderr)
+        logger.error(f"Directory {target_dir} does not exist.")
         return results
         
     for root, _, files in os.walk(target_dir):
@@ -136,7 +145,7 @@ def main():
     else:
         # Table format
         if not results:
-            print("No matching files found.")
+            logger.info("No matching files found.")
             return
         
         # Print markdown table
@@ -147,4 +156,8 @@ def main():
             print(f"| {r['title']} | [{r['path']}](file:///{workspace.as_posix()}/{r['path']}) | {r['type']} | {tags_str} | {r['summary']} |")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        logger.exception("Unhandled exception in search_library.py")
+        sys.exit(1)

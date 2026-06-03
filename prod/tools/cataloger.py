@@ -5,6 +5,15 @@ import json
 import re
 from pathlib import Path
 
+# Configure centralized logging
+_SCRIPT_DIR = Path(__file__).parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+from logging_setup import configure_logging
+configure_logging(script_name=Path(__file__).name)
+import logging
+logger = logging.getLogger(__name__)
+
 def parse_yaml_front_matter(file_path):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -138,7 +147,7 @@ def build_catalog(library_dir, workspace):
     network_path = library_dir / "network_index.json"
     with open(network_path, "w", encoding="utf-8") as f:
         json.dump({"nodes": nodes, "links": links}, f, indent=2)
-    print(f"Cataloger: Saved programmatic graph to {network_path.relative_to(workspace)}")
+    logger.info(f"Cataloger: Saved programmatic graph to {network_path.relative_to(workspace)}")
 
     # Write human-readable index.md
     index_path = library_dir / "index.md"
@@ -194,7 +203,7 @@ def build_catalog(library_dir, workspace):
         
     with open(index_path, "w", encoding="utf-8") as f:
         f.write("\n".join(md))
-    print(f"Cataloger: Saved human catalog index to {index_path.relative_to(workspace)}")
+    logger.info(f"Cataloger: Saved human catalog index to {index_path.relative_to(workspace)}")
 
 def main():
     import argparse
@@ -206,7 +215,11 @@ def main():
     workspace = Path(__file__).parent.parent.parent.resolve()
     target_dir = (workspace / args.dir).resolve()
     
-    build_catalog(target_dir, workspace)
+    try:
+        build_catalog(target_dir, workspace)
+    except Exception:
+        logger.exception("Unhandled exception in prod/tools/cataloger.py")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

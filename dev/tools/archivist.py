@@ -10,11 +10,20 @@ import shutil
 import argparse
 from pathlib import Path
 
+# Configure centralized logging
+_SCRIPT_DIR = Path(__file__).parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+from logging_setup import configure_logging
+configure_logging(script_name=Path(__file__).name)
+import logging
+logger = logging.getLogger(__name__)
+
 def promote_file(src_path, dst_path):
     """Copies a file from dev to prod."""
     dst_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src_path, dst_path)
-    print(f"Promoted: {src_path} -> {dst_path}")
+    logger.info(f"Promoted: {src_path} -> {dst_path}")
     return True
 
 def rebuild_docs(prod_dir):
@@ -37,7 +46,7 @@ def rebuild_docs(prod_dir):
             rel_path = note.relative_to(prod_dir)
             f.write(f"- [{rel_path}]({rel_path})\n")
             
-    print(f"Rebuilt docs in {docs_dir}")
+    logger.info(f"Rebuilt docs in {docs_dir}")
 
 def promote_directory(src_dir, dst_dir):
     """Copies a directory tree."""
@@ -45,7 +54,7 @@ def promote_directory(src_dir, dst_dir):
     dst = Path(dst_dir)
     
     if not src.exists():
-        print(f"Source directory {src} does not exist.")
+        logger.error(f"Source directory {src} does not exist.")
         return False
         
     dst.mkdir(parents=True, exist_ok=True)
@@ -69,7 +78,7 @@ def main():
     if args.promote:
         src = Path(args.promote)
         if not src.exists():
-            print(f"Error: Source {src} does not exist.")
+            logger.error(f"Error: Source {src} does not exist.")
             sys.exit(1)
             
         if src.is_file():
@@ -87,4 +96,8 @@ def main():
         sys.exit(1)
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception:
+        logger.exception("Unhandled exception in archivist.py")
+        sys.exit(1)

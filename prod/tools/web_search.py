@@ -5,6 +5,16 @@ import json
 import urllib.request
 import urllib.parse
 import re
+from pathlib import Path
+
+# Configure centralized logging
+_SCRIPT_DIR = Path(__file__).parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+from logging_setup import configure_logging
+configure_logging(script_name=Path(__file__).name)
+import logging
+logger = logging.getLogger(__name__)
 
 def clean_html(text):
     # Strip HTML tags
@@ -37,7 +47,7 @@ def search_wikipedia(query):
             })
         return results
     except Exception as e:
-        print(f"Wikipedia search failed: {e}", file=sys.stderr)
+        logger.exception(f"Wikipedia search failed: {e}")
         return []
 
 def search_duckduckgo(query):
@@ -90,7 +100,7 @@ def search_duckduckgo(query):
             
         return results
     except Exception as e:
-        print(f"DuckDuckGo search failed: {e}", file=sys.stderr)
+        logger.exception(f"DuckDuckGo search failed: {e}")
         return []
 
 def main():
@@ -123,7 +133,7 @@ def main():
         # Markdown output
         print(f"# Search Results for: {args.query}\n")
         if not results:
-            print("No results found.")
+            logger.info("No results found.")
             return
             
         for i, r in enumerate(results, 1):
@@ -133,4 +143,8 @@ def main():
             print(f"- **Snippet**: {r['snippet']}\n")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        logger.exception("Unhandled exception in prod/tools/web_search.py")
+        sys.exit(1)

@@ -5,6 +5,15 @@ import json
 import re
 from pathlib import Path
 
+# Configure centralized logging
+_SCRIPT_DIR = Path(__file__).parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+from logging_setup import configure_logging
+configure_logging(script_name=Path(__file__).name)
+import logging
+logger = logging.getLogger(__name__)
+
 def parse_yaml_front_matter(file_path):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -27,7 +36,7 @@ def parse_yaml_front_matter(file_path):
 
 def analyze_library(library_dir, workspace):
     if not library_dir.exists():
-        print("Library Scientist Error: Library directory does not exist.", file=sys.stderr)
+        logger.error("Library Scientist Error: Library directory does not exist.")
         return
         
     all_notes = {}
@@ -173,7 +182,7 @@ def analyze_library(library_dir, workspace):
     with open(report_path, "w", encoding="utf-8") as f:
         f.write("\n".join(md))
         
-    print(f"Library Scientist: Generated audit report at {report_path.relative_to(workspace)}")
+    logger.info(f"Library Scientist: Generated audit report at {report_path.relative_to(workspace)}")
 
 def main():
     import argparse
@@ -184,7 +193,11 @@ def main():
     workspace = Path(__file__).parent.parent.parent.resolve()
     target_dir = (workspace / args.dir).resolve()
     
-    analyze_library(target_dir, workspace)
+    try:
+        analyze_library(target_dir, workspace)
+    except Exception:
+        logger.exception("Unhandled exception in library_scientist.py")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

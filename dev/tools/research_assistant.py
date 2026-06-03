@@ -6,15 +6,25 @@ import time
 import subprocess
 import json
 from pathlib import Path
+import re
+
+# Configure centralized logging
+_SCRIPT_DIR = Path(__file__).parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+from logging_setup import configure_logging
+configure_logging(script_name=Path(__file__).name)
+import logging
+logger = logging.getLogger(__name__)
 
 def create_research_brief(query, workspace):
     # Run the web_search script to get JSON results
     web_search_py = workspace / "dev" / "tools" / "web_search.py"
     if not web_search_py.exists():
-        print("Research Assistant Error: dev/tools/web_search.py not found.", file=sys.stderr)
+        logger.error("Research Assistant Error: dev/tools/web_search.py not found.")
         return False
         
-    print(f"Research Assistant: Querying web search for '{query}'...")
+    logger.info(f"Research Assistant: Querying web search for '{query}'...")
     try:
         res = subprocess.run(
             [sys.executable, str(web_search_py), query, "--output", "json"],
@@ -22,11 +32,11 @@ def create_research_brief(query, workspace):
         )
         results = json.loads(res.stdout)
     except Exception as e:
-        print(f"Research Assistant Error executing search: {e}", file=sys.stderr)
+        logger.exception("Research Assistant Error executing search")
         return False
         
     if not results:
-        print("Research Assistant: No search results returned.", file=sys.stderr)
+        logger.warning("Research Assistant: No search results returned.")
         return False
         
     # Generate clean filename from query
@@ -80,10 +90,8 @@ def create_research_brief(query, workspace):
         f.write("\n".join(md))
         
     relative_brief_path = brief_path.relative_to(workspace)
-    print(f"Research Assistant: Created research brief at {relative_brief_path}")
+    logger.info(f"Research Assistant: Created research brief at {relative_brief_path}")
     return True
-
-import re
 
 def main():
     parser = argparse.ArgumentParser(description="Research Assistant for compiling web search briefs.")
@@ -91,11 +99,14 @@ def main():
     
     args = parser.parse_args()
     workspace = Path(__file__).parent.parent.parent.resolve()
-    
-    success = create_research_brief(args.query, workspace)
-    if success:
-        sys.exit(0)
-    else:
+    try:
+        success = create_research_brief(args.query, workspace)
+        if success:
+            sys.exit(0)
+        else:
+            sys.exit(1)
+    except Exception:
+        logger.exception("Unhandled exception in research_assistant.py")
         sys.exit(1)
 
 if __name__ == "__main__":

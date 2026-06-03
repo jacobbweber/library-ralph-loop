@@ -6,6 +6,15 @@ import re
 import json
 from pathlib import Path
 
+# Configure centralized logging
+_SCRIPT_DIR = Path(__file__).parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+from logging_setup import configure_logging
+configure_logging(script_name=Path(__file__).name)
+import logging
+logger = logging.getLogger(__name__)
+
 # Config
 ALLOWED_TYPES = {
     "diwk", "concept_map", "zettelkasten", "soap", "qec", 
@@ -195,21 +204,25 @@ def main():
     if args.run_tests:
         success, msg = run_self_tests(workspace)
         if not success:
-            print(f"TEST RUNNER FAILED:\n{msg}", file=sys.stderr)
+            logger.error(f"TEST RUNNER FAILED:\n{msg}")
             sys.exit(1)
             
     # 2. Run metadata linter
-    print(f"Librarian: Linting folder {args.dir}...")
+    logger.info(f"Librarian: Linting folder {args.dir}...")
     errors, notes = lint_library(target_dir, workspace)
     
     if errors:
-        print(f"\nLibrarian Linter: Found {len(errors)} issues:", file=sys.stderr)
+        logger.error(f"Librarian Linter: Found {len(errors)} issues:")
         for err in errors:
-            print(err, file=sys.stderr)
+            logger.error(err)
         sys.exit(1)
     else:
-        print("Librarian Linter: Clean repository! 0 errors found.")
+        logger.info("Librarian Linter: Clean repository! 0 errors found.")
         sys.exit(0)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        logger.exception("Unhandled exception in prod/tools/librarian.py")
+        sys.exit(1)

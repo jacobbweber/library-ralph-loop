@@ -1,0 +1,6 @@
+2026-06-03 00:13:03 INFO [root] Starting librarian.py (logging initialized).
+2026-06-03 00:13:03 INFO [__main__] 🧪 Running Librarian Self-Tests...
+2026-06-03 00:13:03 INFO [__main__]   [PASS] Directory structure exists.
+2026-06-03 00:13:03 INFO [__main__]   [PASS] progress.json is valid JSON.
+2026-06-03 00:13:03 INFO [__main__]   [PASS] Core linting engine loaded successfully.
+2026-06-03 00:13:03 INFO [__main__] 📋 Self-Tests Complete: 3/3 passed.

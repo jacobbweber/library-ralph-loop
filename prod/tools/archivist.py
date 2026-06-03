@@ -6,6 +6,15 @@ import shutil
 from pathlib import Path
 import re
 
+# Configure centralized logging
+_SCRIPT_DIR = Path(__file__).parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+from logging_setup import configure_logging
+configure_logging(script_name=Path(__file__).name)
+import logging
+logger = logging.getLogger(__name__)
+
 def parse_yaml_front_matter(file_path):
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -146,36 +155,36 @@ python prod/tools/cataloger.py --dir prod/library
     with open(docs_dir / "implementation.md", "w", encoding="utf-8") as f:
         f.write(impl_content.strip() + "\n")
         
-    print("Archivist: Production documentation successfully updated.")
+    logger.info("Archivist: Production documentation successfully updated.")
 
 def promote_file(rel_path_str, workspace):
     src_file = (workspace / rel_path_str).resolve()
     
     if not src_file.exists():
-        print(f"Archivist Error: Source file {rel_path_str} does not exist.", file=sys.stderr)
+        logger.error(f"Archivist Error: Source file {rel_path_str} does not exist.")
         return False
         
     # Security check
     if not str(src_file).startswith(str(workspace)):
-        print("Archivist Error: Security breach. File path is outside workspace.", file=sys.stderr)
+        logger.error("Archivist Error: Security breach. File path is outside workspace.")
         return False
         
     # Determine type of file and target location
     parts = Path(rel_path_str).parts
     
     if "dev" not in parts:
-        print("Archivist Error: Can only promote files from 'dev/' branch/folder.", file=sys.stderr)
+        logger.error("Archivist Error: Can only promote files from 'dev/' branch/folder.")
         return False
         
     # Validate markdown files before promotion
     if src_file.suffix == ".md" and "templates" not in parts:
         metadata = parse_yaml_front_matter(src_file)
         if not metadata:
-            print(f"Archivist Error: {rel_path_str} is missing or has invalid front matter.", file=sys.stderr)
+            logger.error(f"Archivist Error: {rel_path_str} is missing or has invalid front matter.")
             return False
         status = metadata.get("status", "draft")
         if status != "stable":
-            print(f"Archivist Warning: Note {rel_path_str} is status '{status}' (not 'stable'). Forcing promote anyway.", file=sys.stderr)
+            logger.warning(f"Archivist Warning: Note {rel_path_str} is status '{status}' (not 'stable'). Forcing promote anyway.")
             
     # Map target path
     # Replace the "dev" segment with "prod"
@@ -184,7 +193,7 @@ def promote_file(rel_path_str, workspace):
     
     dest_file.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src_file, dest_file)
-    print(f"Archivist: Promoted {rel_path_str} -> {dest_file.relative_to(workspace)}")
+    logger.info(f"Archivist: Promoted {rel_path_str} -> {dest_file.relative_to(workspace)}")
     
     return True
 
@@ -211,4 +220,8 @@ def main():
     parser.print_help()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        logger.exception("Unhandled exception in prod/tools/archivist.py")
+        sys.exit(1)
