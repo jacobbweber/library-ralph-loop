@@ -1,0 +1,17 @@
+{
+  "nodes": [
+    {
+      "id": "prod/library/library_manifest.md",
+      "title": "Library System Manifest & Guidelines",
+      "type": "system_doc",
+      "tags": [
+        "manifest",
+        "guidelines",
+        "system"
+      ],
+      "summary": "Manifest document outlining the taxonomy, roster, and development loop rules.",
+      "status": "stable"
+    }
+  ],
+  "links": []
+}

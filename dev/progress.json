@@ -1,0 +1,34 @@
+{
+  "tasks": [
+    {
+      "id": "validate_roster_tools",
+      "description": "Run Librarian self-tests to validate roster scripts",
+      "passes": false
+    },
+    {
+      "id": "validate_note_templates",
+      "description": "Run Librarian linter to validate note templates",
+      "passes": false
+    },
+    {
+      "id": "promote_roster_tools",
+      "description": "Promote stable dev tools to prod tools",
+      "passes": false
+    },
+    {
+      "id": "promote_note_templates",
+      "description": "Promote dev note templates to prod templates",
+      "passes": false
+    },
+    {
+      "id": "verify_prod_docs",
+      "description": "Ensure prod/docs/ are generated correctly by Archivist",
+      "passes": false
+    },
+    {
+      "id": "rebuild_prod_index",
+      "description": "Run cataloger to compile prod master index",
+      "passes": false
+    }
+  ]
+}
