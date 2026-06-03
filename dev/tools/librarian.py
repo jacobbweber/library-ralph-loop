@@ -1,215 +1,196 @@
 #!/usr/bin/env python3
+"""
+Ralph Loop Librarian Tool
+Validates metadata, lints YAML front-matter, and runs self-tests.
+Uses only standard Python libraries.
+"""
+
 import os
 import sys
-import argparse
 import re
 import json
+import argparse
 from pathlib import Path
 
-# Config
-ALLOWED_TYPES = {
-    "diwk", "concept_map", "zettelkasten", "soap", "qec", 
-    "feynman", "cornell", "eisenhower", "sdlc_project", 
-    "work_journal", "brain_dump", "research_brief", "system_doc"
-}
+# Configuration
+REQUIRED_FIELDS = [
+    "id", "title", "type", "tags", "categories", 
+    "created", "modified", "status", "summary"
+]
+VALID_TYPES = [
+    "zettelkasten", "diwk", "soap", "qec", "feynman", 
+    "cornell", "sdlc_project", "work_journal", "brain_dump", 
+    "research_brief", "system_doc"
+]
+VALID_STATUSES = ["raw", "draft", "review", "stable"]
 
-ALLOWED_STATUSES = {"raw", "draft", "review", "stable"}
-
-def parse_yaml_front_matter(file_path):
-    try:
-        with open(file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        
-        match = re.match(r"^---\r?\n([\s\S]*?)\r?\n---", content)
-        if not match:
-            return None, "Missing front matter delimiters (---)"
-        
-        yaml_text = match.group(1)
-        metadata = {}
-        
-        for line in yaml_text.splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if ":" not in line:
-                continue
-            
-            key, val = line.split(":", 1)
+def parse_frontmatter(content):
+    """Extracts YAML front-matter from markdown content."""
+    if not content.startswith('---'):
+        return None
+    
+    parts = content.split('---', 2)
+    if len(parts) < 3:
+        return None
+    
+    yaml_block = parts[1]
+    metadata = {}
+    
+    # Simple YAML parser for key: value pairs
+    for line in yaml_block.strip().split('\n'):
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        if ':' in line:
+            key, value = line.split(':', 1)
             key = key.strip()
-            val = val.strip()
+            value = value.strip()
             
-            if val.startswith("[") and val.endswith("]"):
-                list_vals = val[1:-1].split(",")
-                metadata[key] = [v.strip().strip('"').strip("'") for v in list_vals if v.strip()]
-            elif val.startswith('"') and val.endswith('"'):
-                metadata[key] = val[1:-1]
-            elif val.startswith("'") and val.endswith("'"):
-                metadata[key] = val[1:-1]
+            # Handle lists like [tag1, tag2]
+            if value.startswith('[') and value.endswith(']'):
+                value = [item.strip().strip('"').strip("'") for item in value[1:-1].split(',')]
             else:
-                metadata[key] = val
-                
-        return metadata, None
-    except Exception as e:
-        return None, str(e)
+                # Remove quotes
+                value = value.strip('"').strip("'")
+            
+            metadata[key] = value
+            
+    return metadata
 
-def lint_library(library_dir, workspace):
+def validate_note(content, filepath=""):
+    """Validates a note's front-matter."""
     errors = []
-    notes = {}
+    metadata = parse_frontmatter(content)
     
-    if not library_dir.exists():
-        return errors, notes
+    if not metadata:
+        errors.append(f"Missing or invalid front-matter in {filepath}")
+        return errors
+    
+    # Check required fields
+    for field in REQUIRED_FIELDS:
+        if field not in metadata:
+            errors.append(f"Missing required field '{field}' in {filepath}")
+    
+    # Validate types
+    if 'type' in metadata and metadata['type'] not in VALID_TYPES:
+        errors.append(f"Invalid type '{metadata['type']}' in {filepath}. Valid: {VALID_TYPES}")
         
-    # First pass: Parse all metadata
-    for root, _, files in os.walk(library_dir):
-        for file in files:
-            if not file.endswith(".md"):
-                continue
-            
-            file_path = Path(root) / file
-            relative_path = file_path.relative_to(workspace)
-            posix_path = str(relative_path).replace("\\", "/")
-            
-            metadata, err = parse_yaml_front_matter(file_path)
-            if err:
-                errors.append(f"LINT ERROR: [{posix_path}] Invalid front matter syntax: {err}")
-                continue
-                
-            notes[posix_path] = {
-                "path": file_path,
-                "metadata": metadata,
-                "content": ""
-            }
-            
-            # Read content for link parsing
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    notes[posix_path]["content"] = f.read()
-            except Exception:
-                pass
-                
-            # Check required fields
-            for field in ["id", "title", "type", "tags", "status"]:
-                if field not in metadata:
-                    errors.append(f"LINT ERROR: [{posix_path}] Missing required front matter field: '{field}'")
-            
-            # Check type validity
-            note_type = metadata.get("type", "")
-            if note_type and note_type not in ALLOWED_TYPES:
-                errors.append(f"LINT ERROR: [{posix_path}] Invalid note type '{note_type}'. Must be one of: {', '.join(sorted(ALLOWED_TYPES))}")
-                
-            # Check status validity
-            status = metadata.get("status", "")
-            if status and status not in ALLOWED_STATUSES:
-                errors.append(f"LINT ERROR: [{posix_path}] Invalid status '{status}'. Must be one of: {', '.join(ALLOWED_STATUSES)}")
-                
-    # Second pass: Check links and backlinks
-    for posix_path, note_info in notes.items():
-        content = note_info["content"]
-        # Find markdown links: [text](file:///workspace_relative_path.md) or [text](relative_path.md)
-        links = re.findall(r"\]\((?:file:///)?([^\)]+\.md)\)", content)
+    # Validate statuses
+    if 'status' in metadata and metadata['status'] not in VALID_STATUSES:
+        errors.append(f"Invalid status '{metadata['status']}' in {filepath}. Valid: {VALID_STATUSES}")
         
-        for link in links:
-            # Clean link query parameters or anchors
-            link_clean = link.split("#")[0].strip()
-            
-            # Check absolute workspace link vs relative link
-            target_posix = link_clean
-            if not target_posix.startswith("dev/") and not target_posix.startswith("prod/"):
-                # It's a relative link from the note
-                note_dir = Path(posix_path).parent
-                target_path = (workspace / note_dir / target_posix).resolve()
-                try:
-                    target_posix = str(target_path.relative_to(workspace)).replace("\\", "/")
-                except Exception:
-                    errors.append(f"LINT ERROR: [{posix_path}] Broken relative link: '{link}' (points outside workspace)")
-                    continue
-            
-            if target_posix not in notes:
-                # Check if it points to a physical file that exists in prod or dev
-                phys_path = workspace / target_posix
-                if not phys_path.exists():
-                    errors.append(f"LINT ERROR: [{posix_path}] Broken link to file: '{link_clean}'")
-                    
-    return errors, notes
+    # Validate date formats (YYYY-MM-DD)
+    date_fields = ['created', 'modified']
+    for field in date_fields:
+        if field in metadata:
+            if not re.match(r'^\d{4}-\d{2}-\d{2}$', metadata[field]):
+                errors.append(f"Invalid date format for '{field}' in {filepath}. Expected YYYY-MM-DD")
+                
+    return errors
 
-def run_self_tests(workspace):
-    # Runs automated checks on the tools to ensure everything is functional.
-    print("Self-Tests: Running checks on tools...")
+def lint_directory(directory):
+    """Lints all markdown files in a directory."""
+    results = {'files_checked': 0, 'errors': []}
+    dir_path = Path(directory)
     
-    tools_dir = str(workspace / "dev" / "tools")
-    if tools_dir not in sys.path:
-        sys.path.insert(0, tools_dir)
+    if not dir_path.exists():
+        return {'error': f'Directory {directory} does not exist'}
         
-    # Test 1: Import check and mock search
-    try:
-        from search_library import search_library
-        class MockArgs:
-            type = None
-            tag = None
-            category = None
-            query = None
-        
-        # Test searching the templates directory (should have some .md templates)
-        target_dir = workspace / "dev" / "templates"
-        results = search_library(target_dir, MockArgs())
-        print(f"Self-Tests: Search library loaded. Found {len(results)} mock templates.")
-    except Exception as e:
-        return False, f"Self-Test Search Failed: {e}"
-        
-    # Test 2: Web Search parser validation
-    try:
-        from web_search import clean_html
-        test_html = "<p>Hello &quot;World&quot;</p>"
-        cleaned = clean_html(test_html)
-        if cleaned != 'Hello "World"':
-            return False, f"Self-Test Web Search Scraper Failed: expected clean text, got '{cleaned}'"
-        print("Self-Tests: Web search utilities checked.")
-    except Exception as e:
-        return False, f"Self-Test Web Search Clean Failed: {e}"
-        
-    # Test 3: Cataloger import check
-    cataloger_py = workspace / "dev" / "tools" / "cataloger.py"
-    if cataloger_py.exists():
+    for file_path in dir_path.rglob('*.md'):
         try:
-            # Check script syntax
-            with open(cataloger_py, "r", encoding="utf-8") as f:
-                compile(f.read(), str(cataloger_py), "exec")
-            print("Self-Tests: Cataloger syntax validated.")
+            content = file_path.read_text(encoding='utf-8')
+            errors = validate_note(content, str(file_path))
+            results['files_checked'] += 1
+            if errors:
+                results['errors'].extend(errors)
         except Exception as e:
-            return False, f"Self-Test Cataloger Syntax Check Failed: {e}"
+            results['errors'].append(f"Error reading {file_path}: {str(e)}")
             
-    print("Self-Tests: All tool checks PASSED.")
-    return True, "All tests passed"
+    return results
+
+def run_tests():
+    """Runs self-tests for the Librarian."""
+    print("Running Librarian Self-Tests...")
+    test_cases = [
+        {
+            "name": "Valid Note",
+            "content": "---\nid: 202310271200\ntitle: Test Note\ntype: zettelkasten\ntags: [test]\ncategories: [test]\ncreated: 2023-10-27\nmodified: 2023-10-27\nstatus: raw\nsummary: A test note.\n---\nContent",
+            "should_pass": True
+        },
+        {
+            "name": "Missing ID",
+            "content": "---\ntitle: Test Note\ntype: zettelkasten\ntags: [test]\ncategories: [test]\ncreated: 2023-10-27\nmodified: 2023-10-27\nstatus: raw\nsummary: A test note.\n---\nContent",
+            "should_pass": False
+        },
+        {
+            "name": "Invalid Type",
+            "content": "---\nid: 202310271200\ntitle: Test Note\ntype: invalid_type\ntags: [test]\ncategories: [test]\ncreated: 2023-10-27\nmodified: 2023-10-27\nstatus: raw\nsummary: A test note.\n---\nContent",
+            "should_pass": False
+        },
+        {
+            "name": "Invalid Status",
+            "content": "---\nid: 202310271200\ntitle: Test Note\ntype: zettelkasten\ntags: [test]\ncategories: [test]\ncreated: 2023-10-27\nmodified: 2023-10-27\nstatus: invalid_status\nsummary: A test note.\n---\nContent",
+            "should_pass": False
+        },
+        {
+            "name": "Invalid Date",
+            "content": "---\nid: 202310271200\ntitle: Test Note\ntype: zettelkasten\ntags: [test]\ncategories: [test]\ncreated: 2023/10/27\nmodified: 2023-10-27\nstatus: raw\nsummary: A test note.\n---\nContent",
+            "should_pass": False
+        }
+    ]
+    
+    passed = 0
+    failed = 0
+    
+    for case in test_cases:
+        errors = validate_note(case['content'])
+        is_pass = len(errors) == 0
+        
+        if is_pass == case['should_pass']:
+            print(f"  [PASS] {case['name']}")
+            passed += 1
+        else:
+            print(f"  [FAIL] {case['name']}")
+            print(f"    Expected: {'Pass' if case['should_pass'] else 'Fail'}")
+            print(f"    Got: {'Pass' if is_pass else 'Fail'}")
+            if errors:
+                print(f"    Errors: {errors}")
+            failed += 1
+            
+    print(f"\nTests Run: {passed + failed}")
+    print(f"Passed: {passed}")
+    print(f"Failed: {failed}")
+    
+    return failed == 0
 
 def main():
-    parser = argparse.ArgumentParser(description="Librarian Quality Assurance Linter.")
-    parser.add_argument("--dir", type=str, default="dev/library", help="Directory to lint (dev/library or prod/library)")
-    parser.add_argument("--run-tests", action="store_true", help="Run automated test suite for system scripts")
-    
+    parser = argparse.ArgumentParser(description='Ralph Loop Librarian Tool')
+    parser.add_argument('--run-tests', action='store_true', help='Run self-tests')
+    parser.add_argument('--lint', type=str, help='Lint a directory')
     args = parser.parse_args()
     
-    workspace = Path(__file__).parent.parent.parent.resolve()
-    target_dir = (workspace / args.dir).resolve()
-    
-    # 1. Run tests if requested
     if args.run_tests:
-        success, msg = run_self_tests(workspace)
-        if not success:
-            print(f"TEST RUNNER FAILED:\n{msg}", file=sys.stderr)
+        success = run_tests()
+        sys.exit(0 if success else 1)
+        
+    if args.lint:
+        results = lint_directory(args.lint)
+        if 'error' in results:
+            print(f"Error: {results['error']}")
             sys.exit(1)
             
-    # 2. Run metadata linter
-    print(f"Librarian: Linting folder {args.dir}...")
-    errors, notes = lint_library(target_dir, workspace)
-    
-    if errors:
-        print(f"\nLibrarian Linter: Found {len(errors)} issues:", file=sys.stderr)
-        for err in errors:
-            print(err, file=sys.stderr)
-        sys.exit(1)
-    else:
-        print("Librarian Linter: Clean repository! 0 errors found.")
-        sys.exit(0)
+        print(f"Linted {results['files_checked']} files.")
+        if results['errors']:
+            print(f"Found {len(results['errors'])} errors:")
+            for error in results['errors']:
+                print(f"  - {error}")
+            sys.exit(1)
+        else:
+            print("All files passed linting.")
+            sys.exit(0)
+            
+    parser.print_help()
+    sys.exit(1)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

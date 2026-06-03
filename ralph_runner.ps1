@@ -16,6 +16,26 @@ New-Item -ItemType Directory -Force -Path (Join-Path $DEV_DIR "library") | Out-N
 New-Item -ItemType Directory -Force -Path (Join-Path $DEV_DIR "templates") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $DEV_DIR "tools") | Out-Null
 
+# Resolve a suitable Python interpreter on the host. Prefers `python3`, then `py`, then `python`.
+function Resolve-PythonInterpreter {
+    $candidates = @('python3','py','python')
+    foreach ($name in $candidates) {
+        $cmd = Get-Command $name -ErrorAction SilentlyContinue
+        if ($cmd) {
+            $source = $cmd.Source
+            # Skip Windows Store App Execution Aliases which often point into WindowsApps
+            if ($source -match 'WindowsApps' -and ($source -notmatch '\.exe$')) {
+                Write-Host "Warning: $name resolves to Windows App Execution Alias (Microsoft Store). Skipping." -ForegroundColor Yellow
+                continue
+            }
+            Write-Host "Resolved Python interpreter: $source" -ForegroundColor Cyan
+            return $source
+        }
+    }
+    Write-Host "Error: No suitable Python interpreter found. Please install Python and ensure `python3` or `py` is on PATH, or disable App Execution Alias for Python." -ForegroundColor Red
+    return $null
+}
+
 function Load-Config {
     if (-not (Test-Path $CONFIG_PATH)) {
         Write-Error "Error: config.json not found."
@@ -65,8 +85,17 @@ function Run-Validation {
 
     Write-Host "Validation: Running dev/tools/librarian.py --run-tests..."
     try {
-        # Run python and capture exit code + output
-        $process = Start-Process python -ArgumentList "$librarian_py --run-tests" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "validation_stdout.tmp" -RedirectStandardError "validation_stderr.tmp"
+        # Run python and capture exit code + output using resolved interpreter
+        if (-not $global:PY_EXEC) {
+            Write-Host "Validation: No resolved Python interpreter available. Attempting to resolve now..."
+            $global:PY_EXEC = Resolve-PythonInterpreter
+        }
+        if (-not $global:PY_EXEC) {
+            Write-Host "Validation: Aborting test run due to missing Python interpreter." -ForegroundColor Red
+            return @{ Success = $false; Error = "Missing Python interpreter" }
+        }
+
+        $process = Start-Process -FilePath $global:PY_EXEC -ArgumentList @("$librarian_py","--run-tests") -NoNewWindow -PassThru -Wait -RedirectStandardOutput "validation_stdout.tmp" -RedirectStandardError "validation_stderr.tmp"
         
         $stdout = ""
         $stderr = ""
@@ -233,6 +262,13 @@ function Call-LMStudio($config, $contextPrompt) {
 $config = Load-Config
 $maxIters = $config.max_iterations
 
+# Resolve Python interpreter to use for validation and subprocesses
+$PY_EXEC = Resolve-PythonInterpreter
+if (-not $PY_EXEC) {
+    Write-Host "Critical: No Python interpreter available; exiting." -ForegroundColor Red
+    exit 1
+}
+
 Write-Host "Starting Ralph Loop (PowerShell 7). Model: $($config.model). Max iterations: $maxIters." -ForegroundColor Magenta
 Write-Host "LM Studio API Base: $($config.api_base)"
 
@@ -266,8 +302,8 @@ while ($iteration -lt $maxIters) {
     if ($filesChanged.Count -gt 0) {
         $valRes = Run-Validation
         if ($valRes.Success) {
-            if ($config.git_commit_on_success) {
-                Run-GitCommit "ralph-loop turn $iteration: completed task"
+                if ($config.git_commit_on_success) {
+                Run-GitCommit "ralph-loop turn ${iteration}: completed task"
             }
             if (Test-Path $ERROR_LOG_PATH) {
                 Remove-Item $ERROR_LOG_PATH -Force

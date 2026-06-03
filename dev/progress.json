@@ -1,6 +1,11 @@
 {
   "tasks": [
     {
+      "id": "env_check",
+      "description": "Verify Python 3.8+ availability and PATH configuration",
+      "passes": true
+    },
+    {
       "id": "validate_roster_tools",
       "description": "Run Librarian self-tests to validate roster scripts",
       "passes": false
