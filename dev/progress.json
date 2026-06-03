@@ -13,7 +13,7 @@
     {
       "id": "validate_note_templates",
       "description": "Run Librarian linter to validate note templates",
-      "passes": false
+      "passes": "running"
     },
     {
       "id": "promote_roster_tools",
