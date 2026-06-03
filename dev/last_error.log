@@ -1,0 +1,24 @@
+EXIT CODE: 1
+
+STDOUT:
+Linting failed for 16 files.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\plan.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\library\index.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\library\library_manifest.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\templates\base_note.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\templates\brain_dump.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\templates\concept_map.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\templates\cornell.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\templates\diwk.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\templates\eisenhower.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\templates\feynman.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\templates\note_template.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\templates\qec.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\templates\sdlc_project.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\templates\soap.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\templates\work_journal.md: No valid front-matter found.
+  ERROR: C:\Users\jacob\Documents\git\library-ralph-loop\dev\templates\zettelkasten.md: No valid front-matter found.
+
+
+STDERR:
+
