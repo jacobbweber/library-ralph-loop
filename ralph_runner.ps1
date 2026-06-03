@@ -237,7 +237,7 @@ function Call-LMStudio($config, $contextPrompt) {
 
     $startTime = Get-Date
     try {
-        $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Body $body -Headers $headers -TimeoutSec 300
+        $response = Invoke-RestMethod -Uri $apiUrl -Method Post -Body $body -Headers $headers -TimeoutSec 1500
         $duration = ((Get-Date) - $startTime).TotalSeconds
 
         $choices = $response.choices

@@ -8,7 +8,7 @@
     {
       "id": "validate_roster_tools",
       "description": "Run Librarian self-tests to validate roster scripts",
-      "passes": false
+      "passes": true
     },
     {
       "id": "validate_note_templates",

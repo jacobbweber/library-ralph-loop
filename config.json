@@ -7,10 +7,10 @@
   "git_commit_on_success": true,
   "sleep_seconds_between_turns": 2,
   "stats": {
-    "total_turns": 4,
-    "successful_turns": 2,
-    "failed_turns": 2,
-    "total_tokens_consumed": 10061,
-    "total_tokens_generated": 14816
+    "total_turns": 8,
+    "successful_turns": 3,
+    "failed_turns": 4,
+    "total_tokens_consumed": 16158,
+    "total_tokens_generated": 33399
   }
 }
