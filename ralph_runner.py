@@ -198,9 +198,13 @@ def call_lm_studio(config, context_prompt):
             
             choices = res_json.get("choices", [])
             if not choices:
+                print(f"API Debug: Response JSON: {res_json}")
                 return None, 0, 0, duration
                 
             response_text = choices[0].get("message", {}).get("content", "")
+            if not response_text:
+                print(f"API Debug: Choices returned, but content is empty. Full message: {choices[0].get('message')}")
+            
             usage = res_json.get("usage", {})
             prompt_tokens = usage.get("prompt_tokens", 0)
             completion_tokens = usage.get("completion_tokens", 0)
